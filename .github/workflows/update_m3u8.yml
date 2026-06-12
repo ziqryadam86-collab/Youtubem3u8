@@ -1,23 +1,36 @@
-      - name: Fetch M3U8 and Update File
-        env:
-          # Gunakan link video yang paling ringkas sahaja
-          YT_URL: "https://www.youtube.com/watch?v=HgWz05AsLxw"
-        run: |
-          # Cuba dapatkan link dengan format 'best' dan print error ke log
-          echo "Sedang mencari stream untuk: $YT_URL"
-          M3U8_URL=$(yt-dlp -f "hls-240" -g "$YT_URL" || yt-dlp -f "hls" -g "$YT_URL")
-          
-          # Jika masih kosong, cuba cara tanpa format (biar yt-dlp pilih)
-          if [ -z "$M3U8_URL" ]; then
-            M3U8_URL=$(yt-dlp -g "$YT_URL" | grep "m3u8" | head -n 1)
-          fi
+name: Update M3U8 Script
 
-          if [ -z "$M3U8_URL" ]; then
-            echo "Gagal total mendapatkan m3u8. Sila semak sama ada video ini LIVE atau tidak."
-            exit 1
-          fi
+on:
+  schedule:
+    - cron: '*/7 * * * *'
+  workflow_dispatch:
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
           
-          echo "#EXTM3U" > index.m3u8
-          echo "#EXT-X-STREAM-INF:BANDWIDTH=390000,CODECS=\"avc1.4d0015,mp4a.40.2\",RESOLUTION=426x240" >> index.m3u8
-          echo "$M3U8_URL" >> index.m3u8
+      - name: Install dependencies
+        run: pip install yt-dlp
+        
+      - name: Run update script
+        run: python update.py
+        
+      - name: Commit and Push
+        run: |
+          if [[ -n $(git status -s) ]]; then
+            git config user.name 'github-actions[bot]'
+            git config user.email 'github-actions[bot]@users.noreply.github.com'
+            git add index.m3u8
+            git commit -m "Update index.m3u8 via Python"
+            git push
+          fi
           
