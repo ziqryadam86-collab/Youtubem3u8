@@ -1,20 +1,50 @@
+name: Update YouTube M3U8
+
+on:
+  schedule:
+    - cron: '*/7 * * * *'
+  workflow_dispatch:
+
+jobs:
+  update-stream:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install yt-dlp
+        run: sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && sudo chmod a+rx /usr/local/bin/yt-dlp
+
       - name: Fetch M3U8 and Update File
         env:
           YT_URL: "https://m.youtube.com/watch?v=HgWz05AsLxw"
         run: |
-          # Dapatkan URL m3u8 dan simpan ke pembolehubah
-          # Kita gunakan 2>/dev/null untuk sembunyikan ralat ke skrin
+          # Dapatkan URL m3u8
           M3U8_URL=$(yt-dlp -f "hls" -g "$YT_URL" 2>/dev/null)
           
-          # Semak jika M3U8_URL kosong atau tidak dijumpai
+          # Semak jika URL berjaya diperolehi
           if [ -z "$M3U8_URL" ]; then
-            echo "Error: Gagal mendapatkan pautan m3u8. Tidak akan mengemaskini fail."
-            exit 0 # Keluar dengan jayanya supaya workflow tidak dikira 'failed'
+            echo "Gagal mendapatkan pautan. Proses dihentikan untuk mengelak fail rosak."
+            exit 0 
+          fi
+          
+          # Tulis ke fail jika berjaya
+          echo "#EXTM3U" > index.m3u8
+          echo "#EXT-X-STREAM-INF:BANDWIDTH=390000,CODECS=\"avc1.4d0015,mp4a.40.2\",RESOLUTION=426x240" >> index.m3u8
+          echo "$M3U8_URL" >> index.m3u8
+
+      - name: Commit and Push
+        run: |
+          # Semak jika ada perubahan pada fail sebelum push
+          if [[ -n $(git status -s) ]]; then
+            git config --global user.name 'github-actions[bot]'
+            git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+            git add index.m3u8
+            git commit -m "Update m3u8 link"
+            git push
           else
-            # Jika berjaya, baru tulis ke fail
-            echo "#EXTM3U" > index.m3u8
-            echo "#EXT-X-STREAM-INF:BANDWIDTH=390000,CODECS=\"avc1.4d0015,mp4a.40.2\",RESOLUTION=426x240" >> index.m3u8
-            echo "$M3U8_URL" >> index.m3u8
-            echo "Berjaya mengemaskini fail."
+            echo "Tiada perubahan, tidak perlu commit."
           fi
           
