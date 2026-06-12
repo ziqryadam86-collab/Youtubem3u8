@@ -2,7 +2,12 @@ import yt_dlp
 import os
 
 def get_m3u8_url(url):
-    ydl_opts = {'format': 'hls', 'quiet': True}
+    # Kita guna user_agent pelayar telefon supaya YouTube tak block
+    ydl_opts = {
+        'format': 'hls',
+        'quiet': True,
+        'user_agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36'
+    }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         try:
             info = ydl.extract_info(url, download=False)
@@ -20,14 +25,13 @@ def update_index(m3u8_url):
         f.write(content)
 
 if __name__ == "__main__":
-    # Ganti dengan link anda
-    url = "https://m.youtube.com/@alanbecker/live" 
+    url = "https://www.youtube.com/watch?v=HgWz05AsLxw" 
     m3u8_url = get_m3u8_url(url)
     
     if m3u8_url:
         update_index(m3u8_url)
-        print("index.m3u8 berjaya dikemaskini!")
+        print("Berjaya!")
     else:
-        print("Gagal mendapatkan pautan m3u8.")
-        exit(1) # Keluar dengan error jika gagal
-  
+        print("Gagal.")
+        exit(1)
+        
